@@ -33,7 +33,7 @@ module Sidekiq
                      update_cache(expand_queues(@dynamic_queues))
                    end
           queues = queues.shuffle
-          queues << Sidekiq::Fetcher::TIMEOUT
+          queues << TIMEOUT
         end
       end
 
