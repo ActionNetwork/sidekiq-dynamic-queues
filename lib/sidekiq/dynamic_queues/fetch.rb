@@ -45,12 +45,12 @@ module Sidekiq
 
       private
       def cache_valid
-        Time.now - @cache_updated < CACHE_VALIDITY_SECONDS
+        Time.now.to_i - @cache_updated < CACHE_VALIDITY_SECONDS
       end
 
       def update_cache(queues)
         @cached_queues = queues
-        @cache_updated = Time.now
+        @cache_updated = Time.now.to_i
 
         queues
       end
