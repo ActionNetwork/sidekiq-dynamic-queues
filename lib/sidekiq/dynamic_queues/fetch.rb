@@ -1,5 +1,7 @@
 require 'sidekiq/fetch'
 
+CACHE_VALIDITY_SECONDS = 5
+
 module Sidekiq
   module DynamicQueues
 
@@ -14,6 +16,9 @@ module Sidekiq
       def initialize(options)
         super
         @dynamic_queues = self.class.translate_from_cli(*options[:queues])
+
+        @cache_updated = 0
+        @cached_queues = []
       end
 
       # overriding Sidekiq::BasicFetch#queues_cmd
@@ -22,8 +27,13 @@ module Sidekiq
         if @dynamic_queues.grep(/(^!)|(^@)|(\*)/).size == 0
           super
         else
-          queues = expand_queues(@dynamic_queues).shuffle
-          queues << Sidekiq::BasicFetch::TIMEOUT
+          queues = if cache_valid
+                     @cached_queues
+                   else
+                     update_cache(expand_queues(@dynamic_queues))
+                   end
+          queues = queues.shuffle
+          queues << Sidekiq::Fetcher::TIMEOUT
         end
       end
 
@@ -31,6 +41,18 @@ module Sidekiq
         queues.collect do |queue|
           queue.gsub('.star.', '*').gsub('.at.', '@').gsub('.not.', '!')
         end
+      end
+
+      private
+      def cache_valid
+        Time.now - @cache_updated < CACHE_VALIDITY_SECONDS
+      end
+
+      def update_cache(queues)
+        @cached_queues = queues
+        @cache_updated = Time.now
+
+        queues
       end
     end
   end
